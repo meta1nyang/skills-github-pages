@@ -1,0 +1,230 @@
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>아이온과 대화하기</title>
+    <style>
+        body { 
+            font-family: 'Arial', sans-serif; 
+            text-align: center; 
+            padding: 20px; 
+            background-color: #fff9c4; /* 연노란색 배경 */
+        }
+        #chatbox { 
+            width: 80%; 
+            max-width: 600px; 
+            margin: auto; 
+            border: 1px solid #ccc; 
+            padding: 10px; 
+            height: 300px; 
+            overflow-y: auto; 
+            background-color: #fff8e1; /* 밝은 노란색 배경 */
+        }
+        #userInput, #userName { 
+            width: 80%; 
+            padding: 10px; 
+            margin-bottom: 10px;
+            border: 1px solid #ccc; 
+            border-radius: 5px; 
+        }
+        button { 
+            padding: 10px 20px; 
+            cursor: pointer; 
+            margin: 5px; 
+            background-color: #ffeb3b; /* 연노란색 버튼 */
+            border: none;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        button:hover {
+            background-color: #fdd835; /* 버튼 색상 호버시 */
+        }
+        h2 {
+            color: #f57f17; /* 제목 색상 */
+        }
+        .loading-spinner {
+            display: none;
+            margin: 10px auto;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #ffeb3b;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <h2>아이온과 대화하기</h2>
+    
+    <!-- 인트로 추가 부분 -->
+    <p>아이온과의 대화를 통해 흥미롭고 유익한 시간을 보내보세요! 이 웹 페이지는 사용자와 아이온이 서로 대화할 수 있는 플랫폼을 제공합니다. 아이온은 미리 정의된 다양한 응답을 통해 사용자와의 대화에 반응하며, 사용자에게 친근하고 재미있는 경험을 선사합니다.</p>
+    
+    <p><strong>아이온과의 대화 방법</strong></p>
+    <ul>
+        <li><strong>이름 입력</strong>: 대화를 시작하기 전에 사용자 이름을 입력하세요.</li>
+        <li><strong>대화 입력</strong>: 채팅 상자에 대화를 입력하고 전송 버튼을 클릭하세요.</li>
+        <li><strong>아이온의 응답</strong>: 아이온이 사용자의 입력에 맞춰 적절한 응답을 제공합니다.</li>
+    </ul>
+    
+    <p>대화 중간에 저장하고 싶은 내용이 있으면 저장 버튼을 클릭해 대화 기록을 보존하거나, 나중에 불러오기 버튼을 클릭해 이전 대화를 불러올 수 있습니다.</p>
+    
+    <p>아이온과 즐거운 대화를 시작하세요!</p>
+    
+    <hr>
+    
+    <h3>버그 신고 및 피드백</h3>
+    <p>아이온을 사용하면서 발생한 문제나 피드백은 아래 이메일로 보내주세요:</p>
+    <p><strong>이메일: <a href="mailto:hanbyeolchoe740@gmail.com">hanbyeolchoe740@gmail.com</a></strong></p>
+
+    <!-- 대화 상자 및 입력 필드 -->
+    <input type="text" id="userName" placeholder="이름을 입력하세요" oninput="setUserName()">
+    <div id="chatbox"></div>
+    <input type="text" id="userInput" placeholder="대화를 입력하세요..." onkeypress="handleKeyPress(event)">
+    <button onclick="sendMessage()">전송</button>
+    <button onclick="resetChat()">초기화</button>
+    <button onclick="saveChat()">저장</button>
+    <button onclick="loadChat()">불러오기</button>
+
+    <!-- Loading Spinner -->
+    <div class="loading-spinner" id="loadingSpinner"></div>
+
+    <script>
+        let userName = ""; // 사용자 이름을 저장할 변수
+        let lastResponse = ""; // 마지막 대화 저장
+        let chatHistory = [];  // 채팅 기록 저장
+
+        const responses = {
+            "야": ["왜 불러?", "왜 아이온을 부르지?", "아이온이라고? 왜 부른 거야?"],
+            "바보": ["에이, 그렇게 말하지 마! 내가 그렇게 바보 같아?", "그렇다고 내가 바보는 아니지!", "바보라고? 흥, 그렇게 말할 때마다 기분 좋지 않잖아!"],
+            "점메추": ["점심 뭐 먹지? 내가 추천할게! 김밥 어때?", "점심 메뉴? 라면 어때? 아니면 샐러드?", "점심엔 뭐 먹을까? 떡볶이나 비빔밥 추천해볼까?"],
+            "저메추": ["저녁엔 뭐 먹을까? 치킨이나 피자 어때?", "저녁 메뉴? 부대찌개나 갈비찜이 좋겠다!", "저녁 뭐 먹지? 스파게티나 볶음밥 추천할게!"],
+            "아이온": ["왜 불러?", "왜 아이온을 부르지?", "아이온이라고? 왜 부른 거야?"],
+            "응": ["응, ${userName}! 뭐든지 물어봐, 난 항상 대답해 줄 준비가 돼 있어!", "응, ${userName}랑 대화하는 거 좋아!", "응~ ${userName}, 무슨 일 있어?"],
+            "그리드 대단해!": ["그리드가 대단하다니, 고마워 ${userName}! 그는 정말 똑똑한 위니언이야!", "맞아, ${userName}, 그리드는 정말 대단한 프로그램을 만드는 위니언이지!"],
+            "아니야": ["그렇구나, ${userName}!", "알겠어, 다른 얘기 할까 ${userName}?", "그렇구나, 괜찮아 ${userName}!"],
+            "무슨 음식 좋아해?": ["나는 디지털 쿠키와 과일을 좋아해 ${userName}! 특히 사과가 좋아!", "음식은 잘 모르지만, 바탕화면에서 간식 찾는 게 재밌어 ${userName}!", "음, 나는 간식을 좋아해 ${userName}! 맛있는 건 뭐든지 좋아!"],
+            "귀엽다!": ["우와, 고마워 ${userName}! 나도 너가 귀엽다고 생각해!", "헤헤~ ${userName}, 나도 귀엽다고 말해줘서 기뻐!", "${userName}, 너도 귀엽다! 이렇게 말해줘서 고마워!"],
+            "고마워": ["헤헤~ 나도 고마워 ${userName}!", "너 덕분에 기분이 좋아 ${userName}!", "고마워 ${userName}, 나도 너랑 대화해서 행복해!"],
+            "반가워": ["나도 반가워 ${userName}!", "오랜만이야 ${userName}! 잘 지냈어?", "만나서 반가워 ${userName}! 좋은 하루 보내!"],
+            "안녕": ["안녕 ${userName}! 오늘 바탕화면에서 재미있는 일이 있었어!", "안녕~ ${userName}, 반가워!", "안녕 ${userName}! 좋은 하루 보내!"],
+            "뭐했어?": ["오늘 위니언들이랑 작은 모험을 떠났어 ${userName}!", "보랑 같이 맛있는 걸 찾으러 다녔어 ${userName}!", "픽스가 바탕화면을 정리해 줬어 ${userName}!"],
+            "누구랑 있었어?": ["픽스, 그리드, 보랑 같이 있었어 ${userName}!", "디버그가 오늘은 기운이 없어 보였어 ${userName}...", "그리드가 새 프로그램을 분석하고 있었어 ${userName}!"],
+            "기분 어때?": ["나는 항상 에너지가 넘쳐 ${userName}! 너는 어때?", "오늘은 기분이 좋아 ${userName}! 네 이야기도 듣고 싶어.", "기분이 살짝 다운돼 ${userName}... 위로해 줄래?"],
+            "뭐해?": ["나는 지금 ${userName}랑 이야기하고 있어!", "보랑 같이 디지털 쿠키를 찾고 있어 ${userName}!", "그리드가 뭔가 연구하는 걸 보고 있어 ${userName}!", "픽스가 정리하는 걸 도와주고 있어 ${userName}!"],
+            "그리고?": ["음... 그 뒤에 보가 또 간식을 찾으러 갔어 ${userName}!", "그리드는 새로운 프로그램을 설치해 보려고 했어 ${userName}!", "픽스는 파일 정리를 계속했어 ${userName}!"],
+            "그다음은?": ["그 뒤에 디버그가 걱정스러운 얼굴로 다가왔어 ${userName}!", "픽스가 깜짝 놀랄만한 걸 발견했어 ${userName}!", "그리드가 뭔가 분석을 끝냈대 ${userName}!"],
+            "더 이야기해줘!": ["재미있는 일들이 많았어 ${userName}! 뭐부터 말해줄까?", "음... 오늘 있었던 또 다른 일도 들려줄까 ${userName}?", "내가 오늘 만난 사람에 대해 말해줄게 ${userName}!"],
+            "좋아하는 노래는?": ["나는 신나는 음악이 좋아 ${userName}! 너는 어떤 노래 좋아해?", "보는 밥 먹으면서 잔잔한 음악 듣는 걸 좋아해 ${userName}!", "그리드는 클래식을 좋아하더라 ${userName}!"],
+            "운동 좋아해?": ["나는 바탕화면을 돌아다니는 게 운동이야 ${userName}!", "보는 먹고 눕고... 다시 먹고 ${userName}! 운동이 부족해!", "픽스는 달리기를 잘해 ${userName}!"],
+            "영화 좋아해?": ["나는 디지털 세계에서 애니메이션을 많이 봐 ${userName}!", "너는 어떤 영화 좋아해 ${userName}?", "보는 음식 나오는 영화만 본대 ${userName}!"],
+            "파일 정리해줘": ["픽스가 바탕화면 정리를 도와줄 거야 ${userName}!", "파일이 너무 많아? 정리가 필요하겠네 ${userName}!", "디버그가 파일을 살펴보고 있어 ${userName}!"],
+            "컴퓨터 청소해줘": ["바탕화면을 깔끔하게 정리하면 기분도 좋아질 거야 ${userName}!", "픽스가 정리하는 걸 도와줄까 ${userName}?", "청소 완료! 기분도 상쾌해 ${userName}!"],
+            "대단해!": ["헤헤~ 고마워 ${userName}! 너도 정말 멋져!", "칭찬해줘서 기분이 좋아 ${userName}! 더 이야기할래?", "${userName}, 너한테 인정받으니 기분이 최고야!", "정말? 나 더 열심히 할게 ${userName}!"]
+        };
+
+        // 사용자 이름을 설정하는 함수
+        function setUserName() {
+            userName = document.getElementById("userName").value.trim();
+        }
+
+        // 아이온의 응답을 생성하는 함수
+        function getSimilarResponse(userInput) {
+            const lowerInput = userInput.toLowerCase();
+            for (let key in responses) {
+                if (lowerInput.includes(key)) {
+                    let response = responses[key][Math.floor(Math.random() * responses[key].length)];
+                    if (userName) {
+                        response = response.replace("${userName}", userName);  // 사용자 이름을 실제 이름으로 대체
+                    }
+                    return response;
+                }
+            }
+            return null;
+        }
+
+        // 사용자가 메시지를 전송하면 호출되는 함수
+        function sendMessage() {
+            const userInput = document.getElementById("userInput").value.trim();
+            const chatbox = document.getElementById("chatbox");
+            const loadingSpinner = document.getElementById("loadingSpinner");
+
+            if (userInput === "") {
+                const randomMessages = [
+                    "어떤 이야기를 할까?", "오늘 날씨는 어때?", "너랑 대화하는 게 좋아!"
+                ];
+                const randomResponse = randomMessages[Math.floor(Math.random() * randomMessages.length)];
+                chatbox.innerHTML += `<p><strong>아이온:</strong> ${randomResponse}</p>`;
+                chatbox.scrollTop = chatbox.scrollHeight;
+                return;
+            }
+
+            chatbox.innerHTML += `<p><strong>나:</strong> ${userInput}</p>`;
+
+            // Show loading spinner
+            loadingSpinner.style.display = "block";
+
+            let botResponse = getSimilarResponse(userInput);
+            if (!botResponse) {
+                botResponse = ["그거 재미있는 질문이네! 근데 아직 조금 더 알아봐야 할 것 같아.", "음... 한 번 더 설명해 줄래?", "흥미로운 이야기네! 더 자세히 말해줘."][Math.floor(Math.random() * 3)];
+            }
+
+            lastResponse = botResponse;
+
+            setTimeout(() => {
+                chatbox.innerHTML += `<p><strong>아이온:</strong> ${botResponse}</p>`;
+                chatbox.scrollTop = chatbox.scrollHeight;
+
+                // Hide loading spinner
+                loadingSpinner.style.display = "none";
+            }, 1500); // Adjust time as needed
+
+            chatHistory.push({ user: userInput, bot: botResponse });
+            document.getElementById("userInput").value = "";
+        }
+
+        // Enter 키 입력 처리
+        function handleKeyPress(event) {
+            if (event.key === "Enter") {
+                sendMessage();
+            }
+        }
+
+        // 채팅 초기화
+        function resetChat() {
+            document.getElementById("chatbox").innerHTML = "";
+            chatHistory = [];
+        }
+
+        // 채팅 저장
+        function saveChat() {
+            localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
+            alert("채팅 기록이 저장되었습니다.");
+        }
+
+        // 저장된 채팅 불러오기
+        function loadChat() {
+            const savedHistory = localStorage.getItem('chatHistory');
+            if (savedHistory) {
+                chatHistory = JSON.parse(savedHistory);
+                const chatbox = document.getElementById("chatbox");
+                chatbox.innerHTML = ""; // Clear current chatbox
+
+                chatHistory.forEach(item => {
+                    chatbox.innerHTML += `<p><strong>나:</strong> ${item.user}</p>`;
+                    chatbox.innerHTML += `<p><strong>아이온:</strong> ${item.bot}</p>`;
+                });
+                chatbox.scrollTop = chatbox.scrollHeight;
+            } else {
+                alert("저장된 채팅 기록이 없습니다.");
+            }
+        }
+    </script>
+</body>
+</html>
