@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>고양이 클릭 게임</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #fffafc;
+      font-family: 'Arial', sans-serif;
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 24px;
+      margin-top: 20px;
+      color: #333;
+    }
+
+    #score {
+      font-size: 20px;
+      margin: 10px;
+      color: #444;
+    }
+
+    #clickTarget {
+      width: 60vw;
+      max-width: 300px;
+      height: auto;
+      border-radius: 20px;
+      cursor: pointer;
+      margin-top: 20px;
+      transition: transform 0.1s ease;
+    }
+
+    #clickTarget:active {
+      transform: scale(0.95);
+    }
+
+    #nameInput {
+      margin-top: 20px;
+    }
+
+    input, button {
+      font-size: 16px;
+      padding: 10px;
+      width: 80%;
+      max-width: 300px;
+      margin: 5px;
+    }
+
+    #ranking {
+      margin-top: 30px;
+      padding: 0 20px;
+      text-align: center;
+    }
+
+    #ranking ul {
+      list-style: none;
+      padding: 0;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  <h1>고양이 클릭 게임</h1>
+
+  <div id="nameInput">
+    <input type="text" id="username" placeholder="이름을 입력하세요" />
+    <button onclick="startGame()">게임 시작</button>
+  </div>
+
+  <div id="gameArea" style="display:none;">
+    <div id="score">점수: 0</div>
+    <img id="clickTarget" src="https://i.ibb.co/svbL75QJ/cat-click.png" />
+    <div id="ranking">
+      <h3>랭킹 (Top 10)</h3>
+      <ul id="rankingList"></ul>
+    </div>
+  </div>
+
+  <script>
+    let score = 0;
+    let username = "";
+
+    // 게임 시작 시
+    function startGame() {
+      const input = document.getElementById("username");
+      username = input.value.trim();
+
+      if (!username) {
+        alert("이름을 입력해주세요!");
+        return;
+      }
+
+      // 랭킹 데이터 불러오기
+      let rankings = JSON.parse(localStorage.getItem("catClickRanking")) || {};
+      const savedName = localStorage.getItem("savedCatName");
+
+      // 처음이 아니고 이미 저장된 다른 이름이 있는 경우 -> 자동 로그인
+      if (savedName && savedName !== username) {
+        alert("이미 다른 이름으로 플레이한 기록이 있습니다: " + savedName);
+        return;
+      }
+
+      // 이미 다른 사람이 사용 중인 이름이라면 막기
+      if (!savedName && rankings[username]) {
+        alert("이미 사용 중인 이름입니다. 다른 이름을 입력해주세요.");
+        return;
+      }
+
+      // 새 이름이면 저장
+      if (!savedName) {
+        localStorage.setItem("savedCatName", username);
+      }
+
+      // UI 전환
+      document.getElementById("nameInput").style.display = "none";
+      document.getElementById("gameArea").style.display = "block";
+
+      // 이전 점수 불러오기
+      score = rankings[username] || 0;
+      document.getElementById("score").textContent = "점수: " + score;
+
+      displayRanking(rankings);
+    }
+
+    // 클릭 이벤트
+    document.getElementById("clickTarget").addEventListener("click", function () {
+      score++;
+      document.getElementById("score").textContent = "점수: " + score;
+      saveScore();
+    });
+
+    function saveScore() {
+      let rankings = JSON.parse(localStorage.getItem("catClickRanking")) || {};
+      rankings[username] = score;
+      localStorage.setItem("catClickRanking", JSON.stringify(rankings));
+      displayRanking(rankings);
+    }
+
+    function displayRanking(rankings) {
+      const sorted = Object.entries(rankings)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10); // 상위 10명으로 변경
+
+      const list = document.getElementById("rankingList");
+      list.innerHTML = "";
+      sorted.forEach(([name, score], index) => {
+        const li = document.createElement("li");
+        li.textContent = `${index + 1}. ${name} - ${score}점`;
+        list.appendChild(li);
+      });
+    }
+
+    // 자동 로그인 시도
+    window.onload = () => {
+      const saved = localStorage.getItem("savedCatName");
+      if (saved) {
+        document.getElementById("username").value = saved;
+        startGame();
+      }
+    };
+  </script>
+</body>
+</html>
