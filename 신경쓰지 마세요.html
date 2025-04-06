@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>고양이 클릭 게임</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      background-color: #fff;
+      margin: 0;
+      padding: 0;
+    }
+    h1 {
+      margin-top: 20px;
+    }
+    #cat {
+      width: 200px;
+      margin: 20px auto;
+      cursor: pointer;
+      display: none;
+      transition: transform 0.1s ease;
+    }
+    #score, #highScore {
+      font-size: 24px;
+      margin: 10px 0;
+    }
+    #startBtn {
+      font-size: 20px;
+      padding: 10px 20px;
+      margin-top: 30px;
+    }
+    @media (max-width: 600px) {
+      #cat {
+        width: 150px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<h1>고양이 클릭!</h1>
+<p id="score">현재 점수: 0</p>
+<p id="highScore">최고 점수: 0</p>
+<button id="startBtn">게임 시작</button>
+<br />
+<img id="cat" src="https://i.ibb.co/svbL75QJ/cat.png" alt="고양이" />
+
+<!-- 배경 음악 -->
+<audio id="bgm" src="https://media.vocaroo.com/mp3/1F6wt63RS41G" loop></audio>
+<!-- 클릭 효과음 (사용자 제공) -->
+<audio id="popSound" src="https://media.vocaroo.com/mp3/1dIq8bcZeowu"></audio>
+
+<script>
+  let score = 0;
+  let highScore = parseInt(localStorage.getItem("highScore")) || 0;
+
+  const scoreEl = document.getElementById("score");
+  const highScoreEl = document.getElementById("highScore");
+  const cat = document.getElementById("cat");
+  const bgm = document.getElementById("bgm");
+  const popSound = document.getElementById("popSound");
+  const startBtn = document.getElementById("startBtn");
+
+  highScoreEl.innerText = `최고 점수: ${highScore}`;
+
+  startBtn.addEventListener("click", () => {
+    bgm.play();
+    cat.style.display = "block";
+    startBtn.style.display = "none";
+  });
+
+  cat.addEventListener("click", () => {
+    score++;
+    scoreEl.innerText = `현재 점수: ${score}`;
+    if (score > highScore) {
+      highScore = score;
+      localStorage.setItem("highScore", highScore);
+      highScoreEl.innerText = `최고 점수: ${highScore}`;
+    }
+
+    // 고양이 커졌다가 작아지기
+    cat.style.transform = "scale(1.2)";
+    setTimeout(() => {
+      cat.style.transform = "scale(1)";
+    }, 100);
+
+    // 뾱 소리
+    popSound.currentTime = 0;
+    popSound.play();
+  });
+</script>
+</body>
+</html>
