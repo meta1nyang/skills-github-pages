@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>버츄얼 다타냥</title>
+  <style>
+    body {
+      margin: 0;
+      background: white;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    #canvas {
+      position: relative;
+      width: 400px;
+      height: 400px;
+    }
+    .layer {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      transition: transform 0.1s ease;
+    }
+    
+    /* 꼬리 애니메이션 (오른쪽에서 왼쪽으로 부드럽게) */
+    #tail {
+      animation: wag 2.5s infinite ease-in-out;
+      transform-origin: left center;
+      z-index: 0;
+    }
+    
+    @keyframes wag {
+      0%   { transform: rotate(5deg); }
+      50%  { transform: rotate(-5deg); }
+      100% { transform: rotate(5deg); }
+    }
+    
+    /* 부드러운 눈 깜빡임 */
+    .eye-transition {
+      transition: opacity 0.2s ease;
+    }
+    
+    /* 부드러운 입 움직임 */
+    .mouth-transition {
+      transition: opacity 0.15s ease;
+    }
+  </style>
+</head>
+<body>
+  <video id="video" style="display:none;" autoplay playsinline muted></video>
+  <div id="canvas">
+    <!-- 꼬리: 몸통 이미지 뒤쪽에 위치하도록 먼저 배치 -->
+    <img id="tail" class="layer" src="https://i.ibb.co/kgsf3k9t/416-20250412155530.png" />
+    <img id="body" class="layer" src="https://i.ibb.co/Qj31ZMX3/1330-20250412151315.png" />
+    <img id="head" class="layer" src="https://i.ibb.co/v4VFDtHw/1330-20250412151312.png" />
+    <img id="eye" class="layer eye-transition" src="https://i.ibb.co/C3xDGfPN/1330-20250412151333.png" />
+    <img id="eye-closed" class="layer eye-transition" src="https://i.ibb.co/DHdbWB9J/1330-20250412151347.png" style="opacity: 0;" />
+    <img id="mouth" class="layer mouth-transition" src="https://i.ibb.co/HpnwNqSM/1330-20250412151321.png" />
+    <img id="mouth-open" class="layer mouth-transition" src="https://i.ibb.co/mV9ZjXg6/1330-20250412151328.png" style="opacity: 0;" />
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+  <script>
+    const head = document.getElementById('head');
+    const mouth = document.getElementById('mouth');
+    const mouthOpen = document.getElementById('mouth-open');
+    const eye = document.getElementById('eye');
+    const eyeClosed = document.getElementById('eye-closed');
+
+    // 음성 감지 (입 열기)
+    navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const source = audioContext.createMediaStreamSource(stream);
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 256;
+      source.connect(analyser);
+      const data = new Uint8Array(analyser.frequencyBinCount);
+      
+      function detectSound() {
+        analyser.getByteFrequencyData(data);
+        const volume = data.reduce((a, b) => a + b, 0) / data.length;
+        const threshold = 30; // 적당한 소리 크기 임계치
+        
+        if (volume > threshold) {
+          mouth.style.opacity = 0;
+          mouthOpen.style.opacity = 1;
+        } else {
+          mouth.style.opacity = 1;
+          mouthOpen.style.opacity = 0;
+        }
+        requestAnimationFrame(detectSound);
+      }
+      detectSound();
+    });
+
+    // 눈 깜빡임 (부드럽게)
+    function blink() {
+      eye.style.opacity = 0;
+      eyeClosed.style.opacity = 1;
+      setTimeout(() => {
+        eye.style.opacity = 1;
+        eyeClosed.style.opacity = 0;
+      }, 200);
+    }
+    // 랜덤한 간격으로 깜빡이도록 추가
+    setInterval(blink, 4000 + Math.random() * 2000);
+    
+    // 얼굴 각도 추적 (머리 회전)
+    const videoElement = document.getElementById('video');
+    navigator.mediaDevices.getUserMedia({ video: true }).then((stream) => {
+      videoElement.srcObject = stream;
+    });
+    
+    const faceMesh = new FaceMesh({
+      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+    });
+    faceMesh.setOptions({
+      maxNumFaces: 1,
+      refineLandmarks: true,
+      minDetectionConfidence: 0.5,
+      minTrackingConfidence: 0.5
+    });
+    faceMesh.onResults(onResults);
+    
+    const camera = new Camera(videoElement, {
+      onFrame: async () => {
+        await faceMesh.send({ image: videoElement });
+      },
+      width: 640,
+      height: 480
+    });
+    camera.start();
+    
+    function onResults(results) {
+      if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+        const landmarks = results.multiFaceLandmarks[0];
+        const leftEye = landmarks[33];
+        const rightEye = landmarks[263];
+    
+        const dx = rightEye.x - leftEye.x;
+        const dy = rightEye.y - leftEye.y;
+        const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+    
+        // 고개 회전에 따른 머리 회전
+        head.style.transform = `rotate(${angle / 3}deg)`;
+    
+        // 눈과 입은 약간 옆으로 살짝 이동 (고개 회전 보정 느낌)
+        const moveX = angle / 5;
+        [eye, eyeClosed, mouth, mouthOpen].forEach(el => {
+          el.style.transform = `translateX(${moveX}px)`;
+        });
+      }
+    }
+  </script>
+</body>
+</html>
