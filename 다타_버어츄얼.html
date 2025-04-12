@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>버추얼 다타냥</title>
+  <style>
+    body {
+      margin: 0;
+      background: white;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    #canvas {
+      position: relative;
+      width: 400px;
+      height: 400px;
+    }
+    .layer {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      transition: transform 0.1s ease;
+    }
+  </style>
+</head>
+<body>
+  <video id="video" style="display:none;" autoplay playsinline muted></video>
+  <div id="canvas">
+    <img id="body" class="layer" src="https://i.ibb.co/Qj31ZMX3/1330-20250412151315.png" />
+    <img id="head" class="layer" src="https://i.ibb.co/v4VFDtHw/1330-20250412151312.png" />
+    <img id="eye" class="layer" src="https://i.ibb.co/C3xDGfPN/1330-20250412151333.png" />
+    <img id="eye-closed" class="layer" src="https://i.ibb.co/DHdbWB9J/1330-20250412151347.png" style="display: none;" />
+    <img id="mouth" class="layer" src="https://i.ibb.co/HpnwNqSM/1330-20250412151321.png" />
+    <img id="mouth-open" class="layer" src="https://i.ibb.co/mV9ZjXg6/1330-20250412151328.png" style="display: none;" />
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+  <script>
+    let head = document.getElementById('head');
+    let mouth = document.getElementById('mouth');
+    let mouthOpen = document.getElementById('mouth-open');
+    let eye = document.getElementById('eye');
+    let eyeClosed = document.getElementById('eye-closed');
+
+    // 소리 감지용 오디오
+    navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const source = audioContext.createMediaStreamSource(stream);
+      const analyser = audioContext.createAnalyser();
+      source.connect(analyser);
+      const data = new Uint8Array(analyser.frequencyBinCount);
+
+      function detectSound() {
+        analyser.getByteFrequencyData(data);
+        let volume = data.reduce((a, b) => a + b) / data.length;
+        if (volume > 20) {
+          mouth.style.display = 'none';
+          mouthOpen.style.display = 'block';
+        } else {
+          mouth.style.display = 'block';
+          mouthOpen.style.display = 'none';
+        }
+        requestAnimationFrame(detectSound);
+      }
+      detectSound();
+    });
+
+    // 눈 깜빡임 감지
+    let blinkCounter = 0;
+    let isBlinking = false;
+
+    // 얼굴 각도 인식 (머리 회전)
+    const videoElement = document.getElementById('video');
+    navigator.mediaDevices.getUserMedia({ video: true }).then((stream) => {
+      videoElement.srcObject = stream;
+    });
+
+    const faceMesh = new FaceMesh({
+      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+    });
+    faceMesh.setOptions({
+      maxNumFaces: 1,
+      refineLandmarks: true,
+      minDetectionConfidence: 0.5,
+      minTrackingConfidence: 0.5
+    });
+    faceMesh.onResults(onResults);
+
+    const camera = new Camera(videoElement, {
+      onFrame: async () => {
+        await faceMesh.send({ image: videoElement });
+      },
+      width: 640,
+      height: 480
+    });
+    camera.start();
+
+    function onResults(results) {
+      if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+        const landmarks = results.multiFaceLandmarks[0];
+        const leftEye = landmarks[33]; // 왼쪽 눈 코너
+        const rightEye = landmarks[263]; // 오른쪽 눈 코너
+        const nose = landmarks[1]; // 코끝
+        const upperLip = landmarks[13]; // 윗입술
+        const lowerLip = landmarks[14]; // 아랫입술
+
+        // 고양이 얼굴 기울기 계산 (좌우 회전 각도)
+        const dx = rightEye.x - leftEye.x;
+        const dy = rightEye.y - leftEye.y;
+        const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+
+        // 고개 회전
+        head.style.transform = `rotate(${angle / 3}deg)`;
+
+        // 눈 깜빡임 감지 (눈의 수평 거리를 이용)
+        const eyeDistance = Math.sqrt(Math.pow(rightEye.x - leftEye.x, 2) + Math.pow(rightEye.y - leftEye.y, 2));
+        if (eyeDistance < 0.02) { // 눈이 가까워지면 (깜빡이는 것으로 판단)
+          if (!isBlinking) {
+            blinkCounter++;
+            eye.style.display = 'none';
+            eyeClosed.style.display = 'block';
+            isBlinking = true;
+          }
+        } else {
+          if (isBlinking) {
+            setTimeout(() => {
+              eye.style.display = 'block';
+              eyeClosed.style.display = 'none';
+              isBlinking = false;
+            }, 150); // 잠깐 눈을 닫았다가 열기
+          }
+        }
+
+        // 입 열림 감지 (윗입술과 아랫입술의 수직 거리로 판단)
+        const lipDistance = Math.abs(upperLip.y - lowerLip.y);
+        if (lipDistance > 0.02) {  // 입이 열리면
+          mouth.style.display = 'none';
+          mouthOpen.style.display = 'block';
+        } else {
+          mouth.style.display = 'block';
+          mouthOpen.style.display = 'none';
+        }
+      }
+    }
+  </script>
+</body>
+</html>
