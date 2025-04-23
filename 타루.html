@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>고양이 타로점</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    /* 모바일 최적화 스타일 */
+    body {
+      background: #ffeef5;
+      font-family: "Arial", sans-serif;
+      margin: 0;
+      padding: 10px;
+      text-align: center;
+    }
+
+    h1 {
+      margin-top: 10px;
+      font-size: 1.2rem;
+      margin-bottom: 10px;
+    }
+
+    /* 고양이 이미지 크기 조정 */
+    #cat {
+      width: 100px;
+      height: auto;
+      margin: 0 auto 10px;
+    }
+
+    /* 버튼 스타일 */
+    button {
+      font-size: 0.9rem;
+      padding: 8px 16px;
+      margin: 6px;
+      border: none;
+      border-radius: 10px;
+      background-color: #ffb6c1;
+      color: black;
+      cursor: pointer;
+    }
+
+    /* 카드 컨테이너 */
+    .card-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    /* 타로 카드 스타일 (타로카드 느낌 적용 + 애니메이션) */
+    .card {
+      background: #fff8f4;
+      border-radius: 20px;
+      box-shadow: 4px 4px 0 #caa;
+      border: 2px solid #000;
+      transform: rotate(-1deg) skew(-1deg, 1deg);
+      padding: 20px;
+      width: 90%;
+      max-width: 280px;
+      transition: transform 0.3s ease;
+      animation: fadeInUp 0.6s ease;
+    }
+
+    .card:hover {
+      transform: rotate(0deg) scale(1.03);
+    }
+
+    .card h2 {
+      font-size: 1.3rem;
+      margin-bottom: 10px;
+      color: #333;
+    }
+
+    .card p {
+      font-size: 1rem;
+      color: #555;
+      line-height: 1.5;
+    }
+
+    /* 애니메이션 */
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* 가로 화면 (600px 이상)에서는 카드 컨테이너 row로 배치 */
+    @media (min-width: 600px) {
+      h1 {
+        font-size: 1.5rem;
+      }
+
+      #cat {
+        width: 150px;
+      }
+
+      button {
+        font-size: 1rem;
+        padding: 10px 20px;
+      }
+
+      .card-container {
+        flex-direction: row;
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+
+      .card {
+        width: 200px;
+      }
+    }
+
+    /* 음악 플레이어 숨기기 */
+    audio {
+      display: none;
+    }
+
+  </style>
+</head>
+<body>
+
+  <!-- 음악 -->
+  <audio autoplay loop>
+    <source src="https://d.uguu.se/wSAjFVkE.mp3" type="audio/mp3">
+    Your browser does not support the audio element.
+  </audio>
+
+  <h1>고양이가 타로를 봐줍니다</h1>
+  <img id="cat" src="https://i.ibb.co/1JJVbn88/1306-20250408153302.png" alt="타로 고양이">
+  <br>
+  <button onclick="drawTarot('love')">연애 운세</button>
+  <button onclick="drawTarot('daily')">하루 운세</button>
+
+  <div id="results" class="card-container"></div>
+
+  <script>
+    const loveCards = [
+      { name: "The Lovers", meaning: "사랑, 선택, 깊은 유대" },
+      { name: "The Empress", meaning: "매력 상승, 다정한 관계" },
+      { name: "The Devil", meaning: "위험한 유혹, 집착 주의" },
+      { name: "The Tower", meaning: "관계의 위기 또는 변화" },
+      { name: "The Star", meaning: "연애에 대한 희망과 기대" },
+      { name: "The Moon", meaning: "불확실한 감정, 착각 주의" },
+      { name: "The Sun", meaning: "행복한 사랑, 좋은 소식" },
+      { name: "The Hierophant", meaning: "전통과 결혼, 안정된 관계" },
+      { name: "The Chariot", meaning: "관계의 진전, 목표에 대한 추진력" },
+      { name: "The High Priestess", meaning: "직관, 비밀의 이해" },
+      { name: "The Strength", meaning: "용기, 인내, 사랑의 힘" },
+      { name: "The Fool", meaning: "새로운 시작, 순수한 사랑" },
+      { name: "The Emperor", meaning: "권위, 안정, 구조" },
+      { name: "The Lovers Reversed", meaning: "갈등, 선택의 어려움" },
+      { name: "The Ace of Cups", meaning: "새로운 사랑의 시작" },
+      { name: "The Two of Cups", meaning: "상호 존중과 사랑" },
+      { name: "The Three of Swords", meaning: "상처, 이별의 아픔" },
+      { name: "The Ten of Cups", meaning: "행복한 가족, 완전한 사랑" },
+      { name: "The Page of Cups", meaning: "새로운 감정의 탐험" },
+      { name: "The Knight of Cups", meaning: "로맨틱한 제안, 사랑의 여정" },
+      { name: "The Queen of Cups", meaning: "감정적 지지, 배려" },
+      { name: "The King of Cups", meaning: "감정의 균형, 성숙한 사랑" },
+    ];
+
+    const dailyCards = [
+      { name: "The Fool", meaning: "새로운 하루의 시작" },
+      { name: "The Magician", meaning: "능동적이고 활기찬 하루" },
+      { name: "The Hermit", meaning: "혼자만의 시간이 필요한 날" },
+      { name: "Wheel of Fortune", meaning: "뜻밖의 변화가 오는 날" },
+      { name: "Justice", meaning: "공정하고 균형 잡힌 하루" },
+      { name: "Temperance", meaning: "여유와 조화가 필요한 하루" },
+      { name: "The World", meaning: "만족스러운 결과와 성취" },
+      { name: "The Hanged Man", meaning: "관점의 변화, 희생이 필요한 날" },
+      { name: "The Emperor", meaning: "권위, 안정, 구조" },
+      { name: "Death", meaning: "끝과 새로운 시작, 변화" },
+      { name: "The Tower", meaning: "갑작스러운 변화, 충격" },
+      { name: "The Sun", meaning: "행복과 성공, 긍정적인 에너지" },
+      { name: "The Moon", meaning: "불확실성과 혼란" },
+      { name: "The Star", meaning: "희망, 영감, 평화" },
+      { name: "The Devil", meaning: "유혹과 집착" },
+      { name: "The Strength", meaning: "내면의 힘과 용기" },
+      { name: "The Chariot", meaning: "목표를 향한 추진력" },
+      { name: "The Lovers", meaning: "사랑의 선택, 조화" },
+      { name: "The Five of Pentacles", meaning: "재정적 어려움, 고립" },
+      { name: "The Six of Wands", meaning: "승리와 인정" },
+      { name: "The Nine of Cups", meaning: "소망의 성취, 만족" },
+    ];
+
+    function drawTarot(type) {
+      const deck = type === 'love' ? loveCards : dailyCards;
+      const resultsDiv = document.getElementById("results");
+      resultsDiv.innerHTML = '';
+
+      // 3장 랜덤으로 뽑기 (중복 없이)
+      const selected = [];
+      const used = new Set();
+      while (selected.length < 3) {
+        const index = Math.floor(Math.random() * deck.length);
+        if (!used.has(index)) {
+          used.add(index);
+          selected.push(deck[index]);
+        }
+      }
+
+      // 카드 3장 생성
+      selected.forEach(card => {
+        const cardDiv = document.createElement("div");
+        cardDiv.className = "card";
+        cardDiv.innerHTML = `<h2>${card.name}</h2><p>${card.meaning}</p>`;
+        resultsDiv.appendChild(cardDiv);
+      });
+    }
+  </script>
+
+</body>
+</html>
