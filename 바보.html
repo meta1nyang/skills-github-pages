@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>다타냥과 대화하기</title>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      background: #fff9f9;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .chat-container {
+      width: 90%;
+      max-width: 500px;
+      border: 2px solid #f2c6c6;
+      border-radius: 10px;
+      padding: 10px;
+      background-color: #ffffff;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    #chat-box {
+      height: 400px;
+      overflow-y: auto;
+      border-bottom: 1px solid #eee;
+      padding: 10px;
+    }
+    .message {
+      margin-bottom: 10px;
+    }
+    #user-input {
+      width: 70%;
+      padding: 10px;
+      font-size: 16px;
+    }
+    button {
+      width: 25%;
+      padding: 10px;
+      background-color: #ffaaaa;
+      border: none;
+      border-radius: 5px;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #ff8888;
+    }
+  </style>
+</head>
+<body>
+  <div class="chat-container">
+    <div id="chat-box"></div>
+    <input type="text" id="user-input" placeholder="다타냥에게 말을 걸어보세요!" />
+    <button onclick="sendMessage()">전송</button>
+  </div>
+
+  <script>
+    const OPENAI_API_KEY = "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";
+
+    async function sendMessage() {
+      const input = document.getElementById('user-input');
+      const message = input.value.trim();
+      if (!message) return;
+
+      addChat('나', message);
+      input.value = '';
+
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${OPENAI_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gpt-3.5-turbo",
+          messages: [
+            {
+              role: "system",
+              content: "너는 다타냥이라는 귀여운 하얀 고양이야. 밝고 명랑하며, 식탐이 많고 '다이어트는 내일부터!'라고 자주 말해. 사용자에게 항상 친근하고 귀엽게 반응해줘. (좀 싸가지 없어도 좋아.)"
+            },
+            { role: "user", content: message }
+          ]
+        })
+      });
+
+      const data = await response.json();
+      const reply = data.choices?.[0]?.message?.content;
+      if (reply) {
+        addChat("다타냥", reply);
+      } else {
+        addChat("다타냥", "으잉? 잘 모르겠는걸...");
+      }
+    }
+
+    function addChat(sender, text) {
+      const box = document.getElementById('chat-box');
+      const messageDiv = document.createElement('div');
+      messageDiv.className = 'message';
+      messageDiv.innerHTML = `<strong>${sender}:</strong> ${text}`;
+      box.appendChild(messageDiv);
+      box.scrollTop = box.scrollHeight;
+    }
+  </script>
+</body>
+</html>
