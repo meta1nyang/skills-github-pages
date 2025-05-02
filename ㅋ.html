@@ -60,7 +60,7 @@
   </div>
 
   <script>
-    const OPENAI_API_KEY = "여기에_API_키_입력"; // 여기 실제 키 넣기
+    const OPENAI_API_KEY = "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"; // 여기 실제 키 넣기
 
     async function sendMessage() {
       const input = document.getElementById('user-input');
@@ -74,7 +74,7 @@
         const response = await fetch("https://api.openai.com/v1/chat/completions", {
           method: "POST",
           headers: {
-            "Authorization": `Bearer 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`,
+            "Authorization": `Bearer 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`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
